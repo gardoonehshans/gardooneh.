@@ -1,0 +1,245 @@
+
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <title>گردونه شانس</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      direction: rtl;
+      background-color: #e0f7fa; /* Light single-color wallpaper */
+      margin: 0;
+      padding: 0;
+    }
+    .decorated-border {
+      border: 10px solid #80deea;
+      padding: 20px;
+      margin: 20px;
+      border-radius: 25px;
+      background-color: white;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+      display: inline-block;
+    }
+    .wheel-container {
+      position: relative;
+      width: 500px;
+      height: 500px;
+      margin: 0 auto;
+    }
+    canvas {
+      transition: transform 5s cubic-bezier(0.25, 1, 0.5, 1);
+      width: 100%;
+      height: 100%;
+    }
+    .pointer {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 15px solid transparent;
+      border-right: 15px solid transparent;
+      border-bottom: 30px solid #333;
+    }
+    button {
+      padding: 12px 24px;
+      font-size: 18px;
+      margin: 10px;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      background-color: #4dd0e1;
+      color: white;
+    }
+    #winner {
+      font-size: 24px;
+      font-weight: bold;
+      margin-top: 30px;
+      color: green;
+      animation: pop 1s ease-in-out;
+      display: none;
+    }
+    @keyframes pop {
+      0% { transform: scale(0); opacity: 0; }
+      50% { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+    input[type="text"], textarea {
+      padding: 8px;
+      font-size: 16px;
+      width: 250px;
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="decorated-border">
+  <h1>گردونه شانس</h1>
+
+  <div class="wheel-container">
+    <canvas id="wheel" width="500" height="500"></canvas>
+    
+    <div class="pointer"></div>
+    <div style="
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-left: 15px solid transparent;
+      border-right: 15px solid transparent;
+      border-top: 25px solid red;
+      transform: translate(-50%, -100%);
+      z-index: 10;
+    "></div>
+    
+  </div>
+
+  <div>
+    <button onclick="spin()">بچرخ!</button>
+    <button onclick="hideWinner()">پنهان کردن</button>
+  </div>
+
+  <div id="winner"></div>
+
+  <div style="margin-top:30px;">
+    <h3>افزودن نام:</h3>
+    <input id="nameInput" placeholder="نام جدید...">
+    <button onclick="addName()">افزودن</button>
+    <br>
+    <textarea id="nameList" rows="4" placeholder="چند اسم با خط جدید بنویس..."></textarea>
+    <br>
+    <button onclick="addMultiple()">افزودن لیست</button>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById("wheel");
+  const ctx = canvas.getContext("2d");
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const radius = 200;
+
+  const protectedNames = ["امین", "رومینا"];
+  let spinning = false;
+  let angleOffset = 0;
+  let lastSelected = null;
+
+  let people = [
+    "امین", "رومینا", "فائزه", "پارمیس", "ممد", "علی", "امیر", "مطهر",
+    "فاطمه", "فاطمه مه", "مطهره۱۱", "سحر", "سعید", "نونا"
+  ];
+
+  let currentPeople = people.map(name => ({
+    name: name,
+    color: getRandomColor()
+  }));
+
+  function getRandomColor() {
+    const letters = "0123456789ABCDEF";
+    let color = "#";
+    for (let i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+  }
+
+  function drawWheel(items, offset = 0) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const angleStep = (2 * Math.PI) / items.length;
+
+    items.forEach((item, i) => {
+      const start = i * angleStep + offset;
+      const end = start + angleStep;
+
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, start, end);
+      ctx.fillStyle = item.color;
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate(start + angleStep / 2);
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillText(item.name, radius - 10, 0);
+      ctx.restore();
+    });
+  }
+
+  function spin() {
+    if (spinning || currentPeople.length === 0) return;
+    spinning = true;
+    document.getElementById("winner").style.display = "none";
+
+    const candidates = currentPeople.filter(p => !protectedNames.includes(p.name));
+    if (candidates.length === 0) return;
+
+    const selected = candidates[Math.floor(Math.random() * candidates.length)];
+    lastSelected = selected;
+    const index = currentPeople.findIndex(p => p.name === selected.name);
+    const anglePerSlice = 360 / currentPeople.length;
+    const sliceMiddle = anglePerSlice / 2;
+    const targetAngle = 360 - (index * anglePerSlice + sliceMiddle);
+    const spinCount = 6;
+    const rotation = spinCount * 360 + targetAngle;
+
+    canvas.style.transition = "transform 5s cubic-bezier(0.25, 1, 0.5, 1)";
+    canvas.style.transform = `rotate(${rotation + angleOffset}deg)`;
+
+    setTimeout(() => {
+      angleOffset = (rotation + angleOffset) % 360;
+      canvas.style.transition = "none";
+      canvas.style.transform = `rotate(${angleOffset}deg)`;
+      drawWheel(currentPeople, angleOffset * Math.PI / 180);
+
+      const winnerDiv = document.getElementById("winner");
+      winnerDiv.innerText = `برنده: ${selected.name}`;
+      winnerDiv.style.display = "block";
+      spinning = false;
+    }, 5200);
+  }
+
+  function hideWinner() {
+    if (lastSelected) {
+      const index = currentPeople.findIndex(p => p.name === lastSelected.name);
+      if (index !== -1) {
+        currentPeople.splice(index, 1);
+        drawWheel(currentPeople, angleOffset * Math.PI / 180);
+        document.getElementById("winner").style.display = "none";
+        lastSelected = null;
+      }
+    }
+  }
+
+  function addName() {
+    const input = document.getElementById("nameInput");
+    const name = input.value.trim();
+    if (name) {
+      currentPeople.push({ name: name, color: getRandomColor() });
+      drawWheel(currentPeople, angleOffset * Math.PI / 180);
+      input.value = "";
+    }
+  }
+
+  function addMultiple() {
+    const textarea = document.getElementById("nameList");
+    const names = textarea.value.trim().split("\n").map(n => n.trim()).filter(n => n);
+    names.forEach(name => {
+      currentPeople.push({ name: name, color: getRandomColor() });
+    });
+    drawWheel(currentPeople, angleOffset * Math.PI / 180);
+    textarea.value = "";
+  }
+
+  drawWheel(currentPeople);
+</script>
+
+</body>
+</html>
